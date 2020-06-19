@@ -1,6 +1,8 @@
 function jsonP(data) {
   var container = document.getElementById("container");
-  var jsonGrid = new JSONGrid(data, container);
+  var jsonGrid = new JSONGrid({
+    data
+  });
   
-  jsonGrid.render();
+  jsonGrid.render(container);
 }

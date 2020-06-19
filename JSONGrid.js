@@ -1,14 +1,30 @@
 'use strict';
 
-var DOMHelper = {
-  EXPANDER_TARGET_ATTRIBUTE: 'data-target-id',
-  TABLE_SHRINKED_CLASSNAME: 'shrinked',
-  createElement: function (type, valueType, additionalClasses, id) {
-    var element = document.createElement(type);
-    var classes = additionalClasses || [];
+(function (global, factory) {
+  if (typeof exports === 'object' && typeof module !== 'undefined') {
+    factory(exports);
+  }
+  else if (typeof define === 'function' && define.amd) {
+    define(['exports'], factory);
+  }
+  else {
+    (global = global || self, factory(global))
+  }
+})(window, function (exports) {
 
-    if (!Array.isArray(classes)) classes = [classes];
-    if (valueType) classes.push(valueType);
+  const EXPANDER_TARGET_ATTRIBUTE = 'data-target-id';
+  const TABLE_SHRINKED_CLASSNAME = 'shrinked';
+
+  function createElement (type, valueType, additionalClasses, id) {
+    let element = document.createElement(type);
+    let classes = additionalClasses || [];
+
+    if (!Array.isArray(classes)) {
+      classes = [classes];
+    }
+    if (valueType) {
+      classes.push(valueType);
+    }
 
     DOMTokenList.prototype.add.apply(element.classList, classes);
 
@@ -17,179 +33,200 @@ var DOMHelper = {
     }
 
     return element;
-  },
-  createExpander: function (name, target) {
-    var expander = DOMHelper.createElement('span', 'expander');
-    expander.textContent = '[' + DOMHelper.getExpanderSign(target) + '] ' + name;
-    expander.setAttribute(DOMHelper.EXPANDER_TARGET_ATTRIBUTE, target.id);
-    expander.onclick = DOMHelper.onExpanderClick;
+  }
+  
+  function createExpander (name, target) {
+    let expander = createElement('span', 'expander');
+    
+    expander.textContent = '[' + getExpanderSign(target) + '] ' + name;
+    expander.setAttribute(EXPANDER_TARGET_ATTRIBUTE, target.id);
+    expander.onclick = onExpanderClick;
+    
     return expander;
-  },
-  onExpanderClick: function (event) {
-    var tableId = event.target.getAttribute(DOMHelper.EXPANDER_TARGET_ATTRIBUTE);
-    var target = document.getElementById(tableId);
+  }
+  
+  function onExpanderClick(event) {
+    let tableId = event.target.getAttribute(EXPANDER_TARGET_ATTRIBUTE);
+    let target = document.getElementById(tableId);
 
     if (target) {
-      target.classList.toggle(DOMHelper.TABLE_SHRINKED_CLASSNAME);
-      event.target.textContent = '[' + DOMHelper.getExpanderSign(target) + event.target.textContent.slice(2);
+      target.classList.toggle(TABLE_SHRINKED_CLASSNAME);
+      event.target.textContent = '[' + getExpanderSign(target) + event.target.textContent.slice(2);
     }
-  },
-  getExpanderSign: function (target) {
-    return target.classList.contains(DOMHelper.TABLE_SHRINKED_CLASSNAME)
-      ? '+'
-      : '-'
-      ;
-  },
-  getObjectType: function(obj, key) {
+  }
+  
+  function getExpanderSign(target) {
+    return target.classList.contains(TABLE_SHRINKED_CLASSNAME) ? '+' : '-';
+  }
+  
+  function getObjectName(obj, key) {
     return key + ' ' + (typeof obj[key] == 'object' ? (Array.isArray(obj[key]) ? '[]' : '{}') : '')
   }
-}
 
-function JSONGrid(data, container, name) {
-  this.data = data;
-  this.container = container instanceof HTMLElement
-    ? container
-    : null;
-  this.instanceNumber = JSONGrid.instances || 0;
-  JSONGrid.instances = (JSONGrid.instances || 0) + 1;
-  this.name = name;
-}
+  function processArray(data) {
+    let firstElement = data[0],
+      rows, headers;
+    
+    if (firstElement && typeof firstElement == 'object') {
+      let keys = data.reduce(function (acc, val) {
+        let keys = Object.keys(val);
+        return acc.concat(keys);
+      }, []);
 
-JSONGrid.prototype.processArray = function () {
-  let firstElement = this.data[0];
-  if (firstElement && typeof firstElement == 'object') {
-    var keys = this.data.reduce(function (acc, val) {
-      var keys = Object.keys(val);
-      return acc.concat(keys);
-    }, []);
-
-    keys = keys.filter(function (value, idx) {
-      return keys.indexOf(value) === idx;
-    });
-
-    var headers = DOMHelper.createElement('tr');
-    keys.forEach(function (value) {
-      var td = DOMHelper.createElement('th');
-      td.textContent = value.toString();
-      headers.appendChild(td);
-    });
-
-    var rows = this.data.map(function (obj, index) {
-      var tr = DOMHelper.createElement('tr')
-
-      keys.forEach(function (key, keyIdx) {
-        var td = DOMHelper.createElement('td', typeof obj, 'table-wrapper');
-        var value = (obj[key] === undefined || obj[key] === null)
-          ? '' + obj[key]
-          : obj[key]
-        ;
-        td.appendChild(new JSONGrid(value, undefined, DOMHelper.getObjectType(obj, key)).generateDOM());
-        tr.appendChild(td);
+      keys = keys.filter(function (value, idx) {
+        return keys.indexOf(value) === idx;
       });
 
-      return tr;
-    }); 
-  }
-  else {
-    var rows = this.data.map(function (obj, index) {
-      var tr = DOMHelper.createElement('tr')
+      headers = createElement('tr');
+      
+      keys.forEach(function (value) {
+        let td = createElement('th');
+        td.textContent = value.toString();
+        headers.appendChild(td);
+      });
 
-      var td = DOMHelper.createElement('td', typeof obj, 'table-wrapper');
-      td.appendChild(new JSONGrid(obj, undefined).generateDOM());
-      tr.appendChild(td);
-      return tr;
-    });
-  }
+      rows = data.map(function (obj, index) {
+        let tr = createElement('tr')
 
-  return {
-    headers: [headers],
-    rows: rows,
-  };
-}
+        keys.forEach(function (key) {
+          let td = createElement('td', typeof obj, 'table-wrapper');
+          let value = (obj[key] === undefined || obj[key] === null)
+            ? '' + obj[key]
+            : obj[key]
+          ;
+          td.appendChild(generateDOM(new JSONGrid({
+              data: value, 
+              name: getObjectName(obj, key)
+          })));
+          tr.appendChild(td);
+        });
 
-JSONGrid.prototype.processObject = function () {
-  var keys = Object.keys(this.data);
-  var headers = DOMHelper.createElement('tr');
-  keys.forEach(function (value) {
-    var td = DOMHelper.createElement('td');
-    td.textContent = '' + value;
-    headers.appendChild(td);
-  });
-  var that = this;
-  var rows = keys.map(function (key, index) {
-    var tr = DOMHelper.createElement('tr')
-    var keyTd = DOMHelper.createElement('td', 'string', 'rowName');
-    var value = that.data[key];
-    var tdType = typeof value;
-
-    if (tdType === 'object') {
-      var grid = new JSONGrid(value, undefined, DOMHelper.getObjectType(that.data, key));
-      value = grid.generateDOM();
-    } else {
-      value = DOMHelper.createElement('span', tdType, 'value');
-      value.textContent = '' + that.data[key];
+        return tr;
+      });
+    }
+    else {
+        rows = data.map(function (obj, index) {
+        
+          let tr = createElement('tr');
+          let td = createElement('td', typeof obj, 'table-wrapper');
+        
+          td.appendChild(generateDOM(new JSONGrid({data: obj})));
+          tr.appendChild(td);
+          return tr;
+        });
     }
 
-    var valTd = DOMHelper.createElement('td', tdType);
+    return {
+      headers: [headers],
+      rows: rows,
+    };
+  }
 
-    keyTd.textContent = key;
+  function processObject(data) {
+    let keys = Object.keys(data);
+    let headers = createElement('tr');
+    
+    keys.forEach(function (value) {
+      var td = createElement('td');
+      td.textContent = '' + value;
+      headers.appendChild(td);
+    });
+    
+    
+    let rows = keys.map((key, index) => {
+      let tr = createElement('tr')
+      let keyTd = createElement('td', 'string', 'rowName');
+      let value = data[key];
+      let tdType = typeof value;
 
-    valTd.appendChild(value);
-    tr.appendChild(keyTd);
-    tr.appendChild(valTd);
+      if (tdType === 'object') {
+        value = generateDOM(new JSONGrid({
+            data: value,
+            name: getObjectName(data, key)
+          }));
+      }
+      else {
+        value = createElement('span', tdType, 'value');
+        value.textContent = '' + data[key];
+      }
 
-    return tr;
-  });
+      let valTd = createElement('td', tdType);
 
-  return {
-    headers: [],
-    rows: rows,
+      keyTd.textContent = key;
+      valTd.appendChild(value);
+      tr.appendChild(keyTd);
+      tr.appendChild(valTd);
+
+      return tr;
+    });
+
+    return {
+      headers: [],
+      rows: rows,
+    };
+  }
+
+  function generateDOM(instance) {
+    let dom;
+
+    if (Array.isArray(instance.data)) {
+      dom = processArray(instance.data);
+    }
+    else if (typeof instance.data === 'object') {
+      dom = processObject(instance.data);
+    }
+    else {
+      let span = createElement('span', typeof instance.data);
+      span.textContent = '' + instance.data;
+      return span;
+    }
+
+    let container = createElement('div', 'container');
+    let tableId = 'table-' + instance.instanceNumber;
+    let intialClasses = instance.instanceNumber > 0 ? [TABLE_SHRINKED_CLASSNAME] : [];
+    let table = createElement('table', 'table', intialClasses, tableId);
+    let tbody = createElement('tbody');
+
+    if (instance.name) {
+      let expander = createExpander(instance.name, table);
+      container.appendChild(expander);
+    }
+
+    dom.headers.forEach(function (val) {
+      val && tbody.appendChild(val);
+    });
+
+    dom.rows.forEach(function (val) {
+      tbody.appendChild(val);
+    });
+
+    table.appendChild(tbody);
+
+    container.appendChild(table);
+
+    return container;
+  }
+
+  function JSONGrid(option = {}) {
+    if (!option.data) {
+      new Error("JSONGrid must be initiated with data");
+    }
+
+    this.data = option.data;
+    this.name = option.name;
+    this.instanceNumber = JSONGrid.prototype.instances++;
+  }
+
+  JSONGrid.prototype = {
+    instances: 0,
+    render(container) {
+      if (!container instanceof HTMLElement) {
+        new Error("JSONGrid.render must be initiated with container");
+      }
+      
+      container.appendChild(generateDOM(this));
+    }
   };
-}
-
-JSONGrid.prototype.generateDOM = function () {
-  var dom;
-
-  if (Array.isArray(this.data)) {
-    dom = this.processArray();
-  } else if (typeof this.data === 'object') {
-    dom = this.processObject();
-  } else {
-    // -- Create a span element and early return since this is a "leaf"
-    var span = DOMHelper.createElement('span', typeof this.data);
-    span.textContent = '' + this.data;
-    return span;
-  }
-
-  var container = DOMHelper.createElement('div', 'container');
-  var tableId = 'table-' + this.instanceNumber;
-  var intialClasses = this.instanceNumber !== 0 ? [DOMHelper.TABLE_SHRINKED_CLASSNAME] : [];
-  var table = DOMHelper.createElement('table', 'table', intialClasses, tableId);
-  var tbody = DOMHelper.createElement('tbody');
   
-  if (this.name) {
-    var expander = DOMHelper.createExpander(this.name, table);
-    container.appendChild(expander); 
-  }
-
-  dom.headers.forEach(function (val) { val && tbody.appendChild(val); });
-  dom.rows.forEach(function (val) { tbody.appendChild(val); });
-
-  table.appendChild(tbody);
-
-  container.appendChild(table);
-
-  return container;
-};
-
-JSONGrid.prototype.render = function (cb) {
-  if (!this.container || !this.data) {
-    return;
-  }
-
-  // -- Remove the children for re-render
-  this.container.innerHTML = '';
-  this.container.appendChild(this.generateDOM());
-};
-
-window.JSONGrid = JSONGrid;
+  exports.JSONGrid =  JSONGrid;
+});
