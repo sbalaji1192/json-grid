@@ -18,9 +18,9 @@ var DOMHelper = {
 
     return element;
   },
-  createExpander: function (dataItems, target) {
+  createExpander: function (name, target) {
     var expander = DOMHelper.createElement('span', 'expander');
-    expander.textContent = '[' + DOMHelper.getExpanderSign(target) + '] ' + dataItems + ' items';
+    expander.textContent = '[' + DOMHelper.getExpanderSign(target) + '] ' + name;
     expander.setAttribute(DOMHelper.EXPANDER_TARGET_ATTRIBUTE, target.id);
     expander.onclick = DOMHelper.onExpanderClick;
     return expander;
@@ -39,55 +39,67 @@ var DOMHelper = {
       ? '+'
       : '-'
       ;
+  },
+  getObjectType: function(obj, key) {
+    return key + ' ' + (typeof obj[key] == 'object' ? (Array.isArray(obj[key]) ? '[]' : '{}') : '')
   }
 }
 
-function JSONGrid(data, container) {
+function JSONGrid(data, container, name) {
   this.data = data;
   this.container = container instanceof HTMLElement
     ? container
     : null;
   this.instanceNumber = JSONGrid.instances || 0;
   JSONGrid.instances = (JSONGrid.instances || 0) + 1;
+  this.name = name;
 }
 
 JSONGrid.prototype.processArray = function () {
-  var keys = this.data.reduce(function (acc, val) {
-    var keys = Object.keys(val);
-    return acc.concat(keys);
-  }, []);
+  let firstElement = this.data[0];
+  if (firstElement && typeof firstElement == 'object') {
+    var keys = this.data.reduce(function (acc, val) {
+      var keys = Object.keys(val);
+      return acc.concat(keys);
+    }, []);
 
-  keys = keys.filter(function (value, idx) {
-    return keys.indexOf(value) === idx;
-  });
-
-  var headers = DOMHelper.createElement('tr');
-  headers.appendChild(DOMHelper.createElement('th'))
-  keys.forEach(function (value) {
-    var td = DOMHelper.createElement('th');
-    td.textContent = value.toString();
-    headers.appendChild(td);
-  });
-
-  var rows = this.data.map(function (obj, index) {
-    var tr = DOMHelper.createElement('tr')
-    var firstTd = DOMHelper.createElement('td', typeof index);
-
-    firstTd.appendChild(new JSONGrid(index).generateDOM());
-    tr.appendChild(firstTd);
-
-    keys.forEach(function (key, keyIdx) {
-      var td = DOMHelper.createElement('td', typeof obj, 'table-wrapper');
-      var value = (obj[key] === undefined || obj[key] === null)
-        ? '' + obj[key]
-        : obj[key]
-        ;
-      td.appendChild(new JSONGrid(value).generateDOM());
-      tr.appendChild(td);
+    keys = keys.filter(function (value, idx) {
+      return keys.indexOf(value) === idx;
     });
 
-    return tr;
-  });
+    var headers = DOMHelper.createElement('tr');
+    keys.forEach(function (value) {
+      var td = DOMHelper.createElement('th');
+      td.textContent = value.toString();
+      headers.appendChild(td);
+    });
+
+    var rows = this.data.map(function (obj, index) {
+      var tr = DOMHelper.createElement('tr')
+
+      keys.forEach(function (key, keyIdx) {
+        var td = DOMHelper.createElement('td', typeof obj, 'table-wrapper');
+        var value = (obj[key] === undefined || obj[key] === null)
+          ? '' + obj[key]
+          : obj[key]
+        ;
+        td.appendChild(new JSONGrid(value, undefined, DOMHelper.getObjectType(obj, key)).generateDOM());
+        tr.appendChild(td);
+      });
+
+      return tr;
+    }); 
+  }
+  else {
+    var rows = this.data.map(function (obj, index) {
+      var tr = DOMHelper.createElement('tr')
+
+      var td = DOMHelper.createElement('td', typeof obj, 'table-wrapper');
+      td.appendChild(new JSONGrid(obj, undefined).generateDOM());
+      tr.appendChild(td);
+      return tr;
+    });
+  }
 
   return {
     headers: [headers],
@@ -111,7 +123,7 @@ JSONGrid.prototype.processObject = function () {
     var tdType = typeof value;
 
     if (tdType === 'object') {
-      var grid = new JSONGrid(value);
+      var grid = new JSONGrid(value, undefined, DOMHelper.getObjectType(that.data, key));
       value = grid.generateDOM();
     } else {
       value = DOMHelper.createElement('span', tdType, 'value');
@@ -154,10 +166,13 @@ JSONGrid.prototype.generateDOM = function () {
   var intialClasses = this.instanceNumber !== 0 ? [DOMHelper.TABLE_SHRINKED_CLASSNAME] : [];
   var table = DOMHelper.createElement('table', 'table', intialClasses, tableId);
   var tbody = DOMHelper.createElement('tbody');
-  var expander = DOMHelper.createExpander(dom.rows.length, table);
-  container.appendChild(expander);
+  
+  if (this.name) {
+    var expander = DOMHelper.createExpander(this.name, table);
+    container.appendChild(expander); 
+  }
 
-  dom.headers.forEach(function (val) { tbody.appendChild(val); });
+  dom.headers.forEach(function (val) { val && tbody.appendChild(val); });
   dom.rows.forEach(function (val) { tbody.appendChild(val); });
 
   table.appendChild(tbody);
