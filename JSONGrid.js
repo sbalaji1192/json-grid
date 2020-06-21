@@ -13,19 +13,17 @@
 })(window, function (exports) {
 
   const EXPANDER_TARGET_ATTRIBUTE = 'data-target-id';
-  const TABLE_SHRINKED_CLASSNAME = 'shrinked';
+  let TABLE_SHRINKED_CLASSNAME = 'null';
+  let performanceBoost = true; 
 
-  function createElement (type, valueType, additionalClasses, id) {
+  function createElement (type, additionalClasses, id) {
     let element = document.createElement(type);
     let classes = additionalClasses || [];
 
     if (!Array.isArray(classes)) {
       classes = [classes];
     }
-    if (valueType) {
-      classes.push(valueType);
-    }
-
+    
     DOMTokenList.prototype.add.apply(element.classList, classes);
 
     if (id) {
@@ -35,35 +33,52 @@
     return element;
   }
   
-  function createExpander (name, target) {
+  function createExpander (name, expanded, performanceBoost) {
     let expander = createElement('span', 'expander');
     
-    expander.textContent = '[' + getExpanderSign(target) + '] ' + name;
-    expander.setAttribute(EXPANDER_TARGET_ATTRIBUTE, target.id);
-    expander.onclick = onExpanderClick;
+    expander.textContent = '[' + getExpanderSign(expanded) + '] ' + name;
+    expander.onclick = performanceBoost ? onExpanderClick : onExpanderClickSecondary;
     
     return expander;
   }
   
-  function onExpanderClick(event) {
+  function onExpanderClickSecondary(event) {
     let tableId = event.target.getAttribute(EXPANDER_TARGET_ATTRIBUTE);
     let target = document.getElementById(tableId);
 
     if (target) {
       target.classList.toggle(TABLE_SHRINKED_CLASSNAME);
-      event.target.textContent = '[' + getExpanderSign(target) + event.target.textContent.slice(2);
+      event.target.textContent = '[' + getExpanderSign(target.classList.contains(TABLE_SHRINKED_CLASSNAME)) + event.target.textContent.slice(2);
     }
   }
+  function onExpanderClick(event) {
+    if (event.target.parentElement.dataset.isShown) {
+      event.target.parentElement.dataset.isShown = '';
+      event.target.parentElement.removeChild(event.target.parentElement.lastChild);
+    }
+    else {
+      var div = document.createElement('div');
+      div.innerHTML = event.target.parentElement.dataset.content;
+      let a = div.querySelectorAll(".expander");
+      if (a && a.length) {
+        a.forEach(d => d.onclick = onExpanderClick);
+      }
+      event.target.parentElement.dataset.isShown = 'true';
+      event.target.parentElement.appendChild(div.firstChild);
+      
+    }
+    event.target.textContent = '[' + getExpanderSign(event.target.parentElement.dataset.isShown) + event.target.textContent.slice(2);
+  }
   
-  function getExpanderSign(target) {
-    return target.classList.contains(TABLE_SHRINKED_CLASSNAME) ? '+' : '-';
+  function getExpanderSign(expanded) {
+    return expanded ? '-' : '+';
   }
   
   function getObjectName(obj, key) {
     return key + ' ' + (typeof obj[key] == 'object' ? (Array.isArray(obj[key]) ? '[]' : '{}') : '')
   }
 
-  function processArray(data) {
+  function processArray(data, topLevel) {
     let firstElement = data[0],
       rows, headers;
     
@@ -77,24 +92,24 @@
         return keys.indexOf(value) === idx;
       });
 
-      headers = createElement('tr');
+      headers = createElement('div', 'table-row');
       
       keys.forEach(function (value) {
-        let td = createElement('th');
+        let td = createElement('div', 'table-cell');
         td.textContent = value.toString();
         headers.appendChild(td);
       });
 
       rows = data.map(function (obj, index) {
-        let tr = createElement('tr')
+        let tr = createElement('div', 'table-row')
 
         keys.forEach(function (key) {
-          let td = createElement('td', typeof obj, 'table-wrapper');
+          let td = createElement('div', typeof obj, 'table-cell');
           let value = (obj[key] === undefined || obj[key] === null)
             ? '' + obj[key]
             : obj[key]
           ;
-          td.appendChild(generateDOM(new JSONGrid({
+          topLevel && td.appendChild(generateDOM(new JSONGrid({
               data: value, 
               name: getObjectName(obj, key)
           })));
@@ -107,10 +122,10 @@
     else {
         rows = data.map(function (obj, index) {
         
-          let tr = createElement('tr');
-          let td = createElement('td', typeof obj, 'table-wrapper');
-        
-          td.appendChild(generateDOM(new JSONGrid({data: obj})));
+          let tr = createElement('div', 'table-row');
+          let td = createElement('div', 'table-cell');
+
+          topLevel && td.appendChild(generateDOM(new JSONGrid({data: obj})));
           tr.appendChild(td);
           return tr;
         });
@@ -122,35 +137,35 @@
     };
   }
 
-  function processObject(data) {
+  function processObject(data, topLevel) {
     let keys = Object.keys(data);
-    let headers = createElement('tr');
+    let headers = createElement('div', 'table-row');
     
     keys.forEach(function (value) {
-      var td = createElement('td');
+      var td = createElement('div', 'table-cell');
       td.textContent = '' + value;
       headers.appendChild(td);
     });
     
     
     let rows = keys.map((key, index) => {
-      let tr = createElement('tr')
-      let keyTd = createElement('td', 'string', 'rowName');
+      let tr = createElement('div', 'table-row')
+      let keyTd = createElement('div', 'table-cell');
       let value = data[key];
       let tdType = typeof value;
 
-      if (tdType === 'object') {
+      if (tdType === 'object' && topLevel) {
         value = generateDOM(new JSONGrid({
             data: value,
             name: getObjectName(data, key)
           }));
       }
       else {
-        value = createElement('span', tdType, 'value');
+        value = createElement('span', 'value');
         value.textContent = '' + data[key];
       }
 
-      let valTd = createElement('td', tdType);
+      let valTd = createElement('div', 'table-cell');
 
       keyTd.textContent = key;
       valTd.appendChild(value);
@@ -166,17 +181,17 @@
     };
   }
 
-  function generateDOM(instance) {
+  function generateDOM(instance, topLevel) {
     let dom;
 
     if (Array.isArray(instance.data)) {
-      dom = processArray(instance.data);
+      dom = processArray(instance.data, topLevel);
     }
     else if (typeof instance.data === 'object') {
-      dom = processObject(instance.data);
+      dom = processObject(instance.data, topLevel);
     }
     else {
-      let span = createElement('span', typeof instance.data);
+      let span = createElement('span', '');
       span.textContent = '' + instance.data;
       return span;
     }
@@ -184,11 +199,11 @@
     let container = createElement('div', 'container');
     let tableId = 'table-' + instance.instanceNumber;
     let intialClasses = instance.instanceNumber > 0 ? [TABLE_SHRINKED_CLASSNAME] : [];
-    let table = createElement('table', 'table', intialClasses, tableId);
-    let tbody = createElement('tbody');
+    let table = createElement('div', intialClasses.concat(['table-container']), tableId);
+    let tbody = createElement('div', 'table-body');
 
     if (instance.name) {
-      let expander = createExpander(instance.name, table);
+      let expander = createExpander(instance.name, topLevel, performanceBoost);
       container.appendChild(expander);
     }
 
@@ -202,7 +217,13 @@
 
     table.appendChild(tbody);
 
-    container.appendChild(table);
+    if (!performanceBoost || topLevel) {
+      container.appendChild(table);
+    }
+    else {
+      container.dataset['content'] = table.outerHTML;
+      container.dataset['isShown'] = ''; // empty represents flase
+    }
 
     return container;
   }
@@ -210,10 +231,15 @@
   function JSONGrid(option = {}) {
     if (!option.data) {
       new Error("JSONGrid must be initiated with data");
+      return;
     }
 
-    this.data = option.data;
+    // Clone the data.
+    this.data = JSON.parse(JSON.stringify(option.data));
     this.name = option.name;
+    if (!performanceBoost) {
+      TABLE_SHRINKED_CLASSNAME = 'hide';
+    }
     this.instanceNumber = JSONGrid.prototype.instances++;
   }
 
@@ -222,9 +248,10 @@
     render(container) {
       if (!container instanceof HTMLElement) {
         new Error("JSONGrid.render must be initiated with container");
+        return;
       }
       
-      container.appendChild(generateDOM(this));
+      container.appendChild(generateDOM(this, true));
     }
   };
   
