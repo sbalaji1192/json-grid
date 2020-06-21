@@ -78,7 +78,7 @@
     return key + ' ' + (typeof obj[key] == 'object' ? (Array.isArray(obj[key]) ? '[]' : '{}') : '')
   }
 
-  function processArray(data, topLevel) {
+  function processArray(data) {
     let firstElement = data[0],
       rows, headers;
     
@@ -109,7 +109,7 @@
             ? '' + obj[key]
             : obj[key]
           ;
-          topLevel && td.appendChild(generateDOM(new JSONGrid({
+           td.appendChild(generateDOM(new JSONGrid({
               data: value, 
               name: getObjectName(obj, key)
           })));
@@ -125,7 +125,7 @@
           let tr = createElement('div', 'table-row');
           let td = createElement('div', 'table-cell');
 
-          topLevel && td.appendChild(generateDOM(new JSONGrid({data: obj})));
+          td.appendChild(generateDOM(new JSONGrid({data: obj})));
           tr.appendChild(td);
           return tr;
         });
@@ -137,7 +137,7 @@
     };
   }
 
-  function processObject(data, topLevel) {
+  function processObject(data) {
     let keys = Object.keys(data);
     let headers = createElement('div', 'table-row');
     
@@ -154,7 +154,7 @@
       let value = data[key];
       let tdType = typeof value;
 
-      if (tdType === 'object' && topLevel) {
+      if (tdType === 'object') {
         value = generateDOM(new JSONGrid({
             data: value,
             name: getObjectName(data, key)
@@ -181,14 +181,14 @@
     };
   }
 
-  function generateDOM(instance, topLevel) {
+  function generateDOM(instance) {
     let dom;
 
     if (Array.isArray(instance.data)) {
-      dom = processArray(instance.data, topLevel);
+      dom = processArray(instance.data);
     }
     else if (typeof instance.data === 'object') {
-      dom = processObject(instance.data, topLevel);
+      dom = processObject(instance.data);
     }
     else {
       let span = createElement('span', '');
@@ -217,7 +217,7 @@
 
     table.appendChild(tbody);
 
-    if (!performanceBoost || topLevel) {
+    if (topLevel) {
       container.appendChild(table);
     }
     else {
@@ -237,9 +237,6 @@
     // Clone the data.
     this.data = JSON.parse(JSON.stringify(option.data));
     this.name = option.name;
-    if (!performanceBoost) {
-      TABLE_SHRINKED_CLASSNAME = 'hide';
-    }
     this.instanceNumber = JSONGrid.prototype.instances++;
   }
 
