@@ -181,7 +181,7 @@
     };
   }
 
-  function generateDOM(instance) {
+  function generateDOM(instance, topLevel) {
     let dom;
 
     if (Array.isArray(instance.data)) {
