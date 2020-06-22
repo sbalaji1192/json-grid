@@ -11,11 +11,6 @@
     (global = global || self, factory(global))
   }
 })(window, function (exports) {
-
-  const EXPANDER_TARGET_ATTRIBUTE = 'data-target-id';
-  let TABLE_SHRINKED_CLASSNAME = 'null';
-  let performanceBoost = true; 
-
   function createElement (type, additionalClasses, id) {
     let element = document.createElement(type);
     let classes = additionalClasses || [];
@@ -33,24 +28,15 @@
     return element;
   }
   
-  function createExpander (name, expanded, performanceBoost) {
+  function createExpander (name, expanded) {
     let expander = createElement('span', 'expander');
     
-    expander.textContent = '[' + getExpanderSign(expanded) + '] ' + name;
-    expander.onclick = performanceBoost ? onExpanderClick : onExpanderClickSecondary;
+    expander.textContent = getExpanderSign(expanded) + name;
+    expander.onclick = onExpanderClick;
     
     return expander;
   }
   
-  function onExpanderClickSecondary(event) {
-    let tableId = event.target.getAttribute(EXPANDER_TARGET_ATTRIBUTE);
-    let target = document.getElementById(tableId);
-
-    if (target) {
-      target.classList.toggle(TABLE_SHRINKED_CLASSNAME);
-      event.target.textContent = '[' + getExpanderSign(target.classList.contains(TABLE_SHRINKED_CLASSNAME)) + event.target.textContent.slice(2);
-    }
-  }
   function onExpanderClick(event) {
     if (event.target.parentElement.dataset.isShown) {
       event.target.parentElement.dataset.isShown = '';
@@ -67,11 +53,11 @@
       event.target.parentElement.appendChild(div.firstChild);
       
     }
-    event.target.textContent = '[' + getExpanderSign(event.target.parentElement.dataset.isShown) + event.target.textContent.slice(2);
+    event.target.textContent = getExpanderSign(event.target.parentElement.dataset.isShown) + event.target.textContent.slice(2);
   }
   
   function getExpanderSign(expanded) {
-    return expanded ? '-' : '+';
+    return expanded ? '- ' : '+ ';
   }
   
   function getObjectName(obj, key) {
@@ -95,7 +81,7 @@
       headers = createElement('div', 'table-row');
       
       keys.forEach(function (value) {
-        let td = createElement('div', 'table-cell');
+        let td = createElement('div', ['table-cell', 'table-cell-head']);
         td.textContent = value.toString();
         headers.appendChild(td);
       });
@@ -104,7 +90,7 @@
         let tr = createElement('div', 'table-row')
 
         keys.forEach(function (key) {
-          let td = createElement('div', typeof obj, 'table-cell');
+          let td = createElement('div', 'table-cell');
           let value = (obj[key] === undefined || obj[key] === null)
             ? '' + obj[key]
             : obj[key]
@@ -142,7 +128,7 @@
     let headers = createElement('div', 'table-row');
     
     keys.forEach(function (value) {
-      var td = createElement('div', 'table-cell');
+      var td = createElement('div', ['table-cell', 'table-cell-head']);
       td.textContent = '' + value;
       headers.appendChild(td);
     });
@@ -198,23 +184,24 @@
 
     let container = createElement('div', 'container');
     let tableId = 'table-' + instance.instanceNumber;
-    let intialClasses = instance.instanceNumber > 0 ? [TABLE_SHRINKED_CLASSNAME] : [];
-    let table = createElement('div', intialClasses.concat(['table-container']), tableId);
+    let table = createElement('div', 'table-container', tableId);
+    let thead = createElement('div', 'table-head');
     let tbody = createElement('div', 'table-body');
 
     if (instance.name) {
-      let expander = createExpander(instance.name, topLevel, performanceBoost);
+      let expander = createExpander(instance.name, topLevel);
       container.appendChild(expander);
     }
 
     dom.headers.forEach(function (val) {
-      val && tbody.appendChild(val);
+      val && thead.appendChild(val);
     });
 
     dom.rows.forEach(function (val) {
       tbody.appendChild(val);
     });
 
+    table.appendChild(thead);
     table.appendChild(tbody);
 
     if (topLevel) {
@@ -249,6 +236,12 @@
       }
       
       container.appendChild(generateDOM(this, true));
+      let table = $("#table-0");
+      let header = table.find("> .table-head .table-cell-head");
+      let width = table.parent().width();
+      header.each((i, d) => {
+        $(d).css({'min-width' : `${width /header.length }px`});
+      });
     }
   };
   
