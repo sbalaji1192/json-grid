@@ -1,6 +1,3 @@
-.table-container {
-  display: table;
-}
 .table-head {
   display: table-header-group;
 }
@@ -19,4 +16,40 @@
 
 .expander {
   cursor: pointer;
+}
+
+.outer-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.outer-container .table-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+#container {
+  height: 100vh;
+}
+
+.outer-container > .table-head {
+  position: absolute;
+  background: #fff;
+  width: 100%;
+  overflow: auto;
+  top: 0;
+}
+
+.outer-container > .table-head::-webkit-scrollbar,
+.outer-container > .table-head::-webkit-scrollbar-button,
+.outer-container > .table-head::-webkit-scrollbar-track,
+.outer-container > .table-head::-webkit-scrollbar-track-piece,
+.outer-container > .table-head::-webkit-scrollbar-thumb,
+.outer-container > .table-head::-webkit-scrollbar-corner,
+.outer-container > .table-head::-webkit-resizer {
+  opacity: 0;
+  height: 0;
+  width: 0;
 }
