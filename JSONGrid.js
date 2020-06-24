@@ -11,7 +11,7 @@
     (global = global || self, factory(global))
   }
 })(window, function (exports) {
-  let updateTable;
+  let expand, updateTable;
   
   function createElement (type, additionalClasses, id) {
     let element = document.createElement(type);
@@ -61,6 +61,15 @@
     return key + ' ' + (typeof obj[key] == 'object' ? (Array.isArray(obj[key]) ? '[]' : '{}') : '')
   }
 
+  function getValue(data) {
+    if (Array.isArray(data) || typeof data !== "object") {
+      return data;
+    }
+    else {
+      return data.value;
+    }
+  }
+
   function processArray(data) {
     let firstElement = data[0],
       rows, headers;
@@ -92,7 +101,8 @@
           
            td.appendChild(generateDOM(new JSONGrid({
               data: value, 
-              name: getObjectName(obj, key)
+              name: getObjectName(obj, key),
+              expand
           })));
           tr.appendChild(td);
         });
@@ -106,7 +116,7 @@
           let tr = createElement('div', 'table-row');
           let td = createElement('div', 'table-cell');
 
-          td.appendChild(generateDOM(new JSONGrid({data: obj})));
+          td.appendChild(generateDOM(new JSONGrid({data: obj, expand})));
           tr.appendChild(td);
           return tr;
         });
@@ -138,7 +148,8 @@
       if (tdType === 'object') {
         value = generateDOM(new JSONGrid({
             data: value,
-            name: getObjectName(data, key)
+            name: getObjectName(data, key),
+            expand
           }));
       }
       else {
@@ -168,11 +179,14 @@
     let table = createElement('div', 'table-container', tableId);
     let thead = createElement('div', 'table-head');
     let tbody = createElement('div', 'table-body');
-    if (Array.isArray(instance.data)) {
-      dom = processArray(instance.data);
+    
+    let data = getValue(instance.data);
+
+    if (Array.isArray(data)) {
+      dom = processArray(data);
     }
-    else if (typeof instance.data === 'object') {
-      dom = processObject(instance.data);
+    else if (typeof data === 'object') {
+      dom = processObject(data);
     }
 
     dom.headers.forEach(function (val) {
@@ -190,9 +204,10 @@
   }
 
   function generateDOM(instance, topLevel) {
-    if (!Array.isArray(instance.data) && typeof instance.data !== 'object') {
+    let data = getValue(instance.data);
+    if (!Array.isArray(data) && typeof data !== 'object') {
       let span = createElement('span', '');
-      span.textContent = instance.data ? instance.data.toString() : '';
+      span.textContent = data ? data.toString() : '';
       return span;
     }
     else {
@@ -202,7 +217,7 @@
       let expander;
 
       if (instance.name) {
-        expander = createExpander(instance.name, topLevel);
+        expander = createExpander(instance.name, topLevel || expand);
         container.appendChild(expander);
       }
       
@@ -213,6 +228,11 @@
         expander.__data__ = instance.data;
         expander.__isShown__ = false;
         expander.__name__ = instance.name;
+        
+        if (expand) {
+           expander.__isShown__ = true;
+           container.appendChild(innerTable(instance));
+        }
       }
 
       return container;
@@ -228,6 +248,7 @@
     // Clone the data.
     this.data = JSON.parse(JSON.stringify(option.data));
     this.name = option.name;
+    expand = option.expand;
     this.instanceNumber = JSONGrid.prototype.instances++;
   }
 

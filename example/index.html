@@ -6,16 +6,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JSON Grid</title>
   <link rel="stylesheet" href="../json-grid.css">
-  <script src="../JSONGrid.js"></script>
-</head>
-
-<body>
-<div id="container"></div>
-<script
+  
+  <script
   src="https://code.jquery.com/jquery-1.12.4.min.js"
   integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
   crossorigin="anonymous"></script>
-<script src="global.js"></script>
+  <script src="../JSONGrid.js"></script>
+  <script src="global.js"></script>
+</head>
+
+<body>
+	<textarea placeholder="paste your data here"></textarea>
+	<button>generate table</button>
+	<br/>
+	<br/>
+	<div>
+		<input type="text" placeholder="by row" class="row" />
+		<input type="text" placeholder="by column" class="column" />
+	</div>
+
+	<br/>
+	<br/>
+<div id="container"></div>
 <script src="jsonp.js"></script>
 </body>
 </html>

@@ -12,6 +12,7 @@
   display: table-cell;
   white-space: nowrap;
   padding: 5px 10px;
+  border: 1px solid #000;
 }
 
 .expander {
