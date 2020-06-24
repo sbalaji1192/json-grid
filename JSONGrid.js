@@ -207,7 +207,7 @@
     let data = getValue(instance.data);
     if (!Array.isArray(data) && typeof data !== 'object') {
       let span = createElement('span', '');
-      span.textContent = data ? data.toString() : '';
+      span.textContent = data != undefined ? data.toString() : '';
       return span;
     }
     else {
